@@ -12,8 +12,20 @@ lx = 6; ly = 6; lz = 3;             % Dimensions of the Room Environment [m]
 %% Tx parameters
 half_angle = 70;                    % Semi angle of the LED at half power illumination [degree] (I(half_angle) = 1/2 * I(0), from the Lambertian distribution)
 Pt = 20 * 3600e-3;                  % Transmitted optical power from the LED [W]
-r_s = [-lx/4, -ly/4, 0];            % Position of LED [m] (z=0 is the roof, z=lz is the floor, x=-lx/2 is the left wall)
-n_s = [0, 0, 1];                    % Orientation of the source (z=1 is looking down, z=-1 is looking up)
+
+% Position of LED [m] (z=0 is the roof, z=lz is the floor, x=-lx/2 is the
+% left wall). Accepts multiple sources
+r_s = [ -lx/4,  -ly/4,  0;
+        -lx/4,  ly/4,   0;
+        lx/4,   -ly/4,  0;
+        lx/4,   ly/4,   0];
+
+% Orientation of the source (z=1 is looking down, z=-1 is looking up).
+% Accepts multiple sources.
+n_s = [ 0,  0,  1;
+        0,  0,  1;
+        0,  0,  1;
+        0,  0,  1];
 
 %% Rx parameters
 area = 0.001;                       % Area of the Photodiode [m]
@@ -61,32 +73,38 @@ n_r = n_r ./ norm(n_r);
 [XR, YR, ZR] = meshgrid(x, y, z);   % Obtain all possible points in the (X,Y,Z) space
 r_r = [XR(:), YR(:), ZR(:)];        % Vectorize. Position of receiver as a 3D vector.
 
-% Pre-allocate vectors
-distance = ones(1, length(r_r));
-cos_emitter = ones(size(distance));
-cos_receiver = ones(size(distance));
+P_received = zeros(size(XR));
 
-% Vector operations
-for i=1:1:length(r_r)
-    distance(i) = norm(r_s - r_r(i,:));
-    cos_emitter(i) = dot(n_s, (r_r(i,:) - r_s) ./ distance(i));
-    cos_receiver(i) = dot(n_r, (r_s - r_r(i,:)) ./ distance(i));
+% For each sender, calculate the received power
+for s_id=1:1:height(n_s)
+    % Pre-allocate vectors
+    distance = zeros(1, length(r_r));
+    cos_emitter = zeros(size(distance));
+    cos_receiver = zeros(size(distance));
+
+    % Vector operations
+    for i=1:1:length(r_r)
+        distance(i) = norm(r_s(s_id,:) - r_r(i,:));
+        cos_emitter(i) = dot(n_s(s_id,:), (r_r(i,:) - r_s(s_id,:)) ./ distance(i));
+        cos_receiver(i) = dot(n_r, (r_s(s_id,:) - r_r(i,:)) ./ distance(i));
+    end
+    cos_emitter(cos_emitter < 0) = 0;
+    cos_receiver(acosd(cos_receiver) > FOV) = 0;
+    cos_receiver(cos_receiver < 0) = 0;
+
+    % Revert to meshgrid coordinates
+    distance = reshape(distance, size(XR));
+    cos_emitter = reshape(cos_emitter, size(XR));
+    cos_receiver = reshape(cos_receiver, size(XR));
+
+    % LOS channel response
+    H_LOS = ( (m+1) / (2*pi) ) .* cos_emitter.^m .* ...
+        ( area .* cos_receiver ./ (distance.^2) ) .* Ts .* g;
+
+    % Received power
+    P_received = P_received + Pt .* H_LOS .* Responsivity;
 end
-cos_emitter(cos_emitter < 0) = 0;
-cos_receiver(acosd(cos_receiver) > FOV) = 0;
-cos_receiver(cos_receiver < 0) = 0;
 
-% Revert to meshgrid coordinates
-distance = reshape(distance, size(XR));
-cos_emitter = reshape(cos_emitter, size(XR));
-cos_receiver = reshape(cos_receiver, size(XR));
-
-% LOS channel response
-H_LOS = ( (m+1) / (2*pi) ) .* cos_emitter.^m .* ...
-    ( area .* cos_receiver ./ (distance.^2) ) .* Ts .* g;
-
-% Received power
-P_received = Pt .* H_LOS * Responsivity;
 P_received_dBm = 10*log10(P_received/1e-3);
 
 %% Figure
