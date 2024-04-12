@@ -73,7 +73,7 @@ n_r = n_r ./ norm(n_r);
 [XR, YR, ZR] = meshgrid(x, y, z);   % Obtain all possible points in the (X,Y,Z) space
 r_r = [XR(:), YR(:), ZR(:)];        % Vectorize. Position of receiver as a 3D vector.
 
-P_received = zeros(size(XR));
+P_optical_received = zeros(size(XR));
 
 % For each sender, calculate the received power
 for s_id=1:1:height(n_s)
@@ -101,16 +101,16 @@ for s_id=1:1:height(n_s)
     H_LOS = ( (m+1) / (2*pi) ) .* cos_emitter.^m .* ...
         ( area .* cos_receiver ./ (distance.^2) ) .* Ts .* g;
 
-    % Received power
-    P_received = P_received + Pt .* H_LOS .* Responsivity;
+    % Optical Received power
+    P_optical_received = P_optical_received + Pt .* H_LOS;
 end
 
-P_received_dBm = 10*log10(P_received/1e-3);
+P_optical_received_dBm = 10*log10(P_optical_received/1e-3);
 
 %% Figure
-surfc(x, y, P_received_dBm);
-title('Received Power in Indoor - VLC System corresponding to the LOS path');
+surfc(x, y, P_optical_received_dBm);
+title('Received Optical Power in Indoor - VLC System corresponding to the LOS path');
 xlabel('x in m');
 ylabel('y in m');
-zlabel('Received Power in dBm');
-axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_received_dBm)), max(max(P_received_dBm))]);
+zlabel('Received Optical Power in dBm');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_received_dBm)), max(max(P_optical_received_dBm))]);
