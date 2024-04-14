@@ -11,7 +11,8 @@ lx = 6; ly = 6; lz = 3;             % Dimensions of the Room Environment [m]
 
 %% Tx parameters
 half_angle = 70;                    % Semi angle of the LED at half power illumination [degree] (I(half_angle) = 1/2 * I(0), from the Lambertian distribution)
-Pt = 20 * 3600e-3;                  % Transmitted optical power from the LED [W]
+Pt = 1;                             % [W] Transmitted optical power from the LED.
+I0 = 900;                           % [lm] Total luminic power.
 
 % Position of LED [m] (z=0 is the roof, z=lz is the floor, x=-lx/2 is the
 % left wall). Accepts multiple sources
@@ -32,7 +33,6 @@ area = 0.001;                       % Area of the Photodiode [m]
 Ts = 1;                             % Gain of the Optical Filter
 n = 1.5;                            % Refractive Index of the Lens
 FOV = 70;                           % Field of View of the Photodiode
-Responsivity = 1;                   % Responsivity [A/W]
 
 % Position of receiver
 x = linspace(-lx/2, lx/2, lx*5);    % Points to evaluate in the "X" axis.
@@ -73,6 +73,7 @@ n_r = n_r ./ norm(n_r);
 [XR, YR, ZR] = meshgrid(x, y, z);   % Obtain all possible points in the (X,Y,Z) space
 r_r = [XR(:), YR(:), ZR(:)];        % Vectorize. Position of receiver as a 3D vector.
 
+Iluminance = zeros(size(XR));
 P_optical_received = zeros(size(XR));
 
 % For each sender, calculate the received power
@@ -103,14 +104,26 @@ for s_id=1:1:height(n_s)
 
     % Optical Received power
     P_optical_received = P_optical_received + Pt .* H_LOS;
+
+    % Luminic received power [lx]
+    Iluminance = Iluminance + ( (m+1) / (2*pi) ) .* I0 .* cos_emitter.^m ./ (distance.^2);
 end
 
 P_optical_received_dBm = 10*log10(P_optical_received/1e-3);
 
 %% Figure
+figure();
 surfc(x, y, P_optical_received_dBm);
 title('Received Optical Power in Indoor - VLC System corresponding to the LOS path');
 xlabel('x in m');
 ylabel('y in m');
 zlabel('Received Optical Power in dBm');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_received_dBm)), max(max(P_optical_received_dBm))]);
+
+figure();
+surfc(x, y, Iluminance);
+title(sprintf('Iluminance E at %.02fm from the roof', z));
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('Iluminance E [lx]');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Iluminance)), max(max(Iluminance))]);
