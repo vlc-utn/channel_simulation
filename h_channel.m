@@ -39,6 +39,7 @@ function [h, delay] = h_channel(r_s, n_s, m, r_r, n_r, A, FOV)
         cos_emitter(i) = dot(n_s, (r_r(i,:) - r_s) ./ distance(i));
         cos_receiver(i) = dot(n_r(i,:), (r_s - r_r(i,:)) ./ distance(i));
     end
+    cos_emitter(cos_emitter < 0) = 0;
 
     % LOS channel response
     h = ((m+1) / (2*pi)) .* cos_emitter.^m .* A .* cos_receiver ...
