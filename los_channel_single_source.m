@@ -106,15 +106,19 @@ n_r = repmat(n_r, numel(r_r), 1);
 m = -log(2)/log(cosd(half_angle));  % Lamberts Mode Number for Tx
 g = (n^2)/(sind(FOV).^2);           % Gain of the optical concentrator
 
-H_total = zeros(height(r_r), 1);
+H_LOS = h_channel(r_s, n_s, m, r_r, n_r, area, FOV);
 
-for i=1:1:height(n_s)
-    H_total = H_total + h_channel(r_s(i,:), n_s(i,:), m, r_r, n_r, area, FOV);
-end
+H_LOS = H_LOS * Ts *g;
 
-H_total = H_total * Ts *g;
 
-P_optical_received = Pt .* H_total;
+H_NLOS = zeros(height(r_r), 1);
+
+% for i=1:1:height(n_s)
+%     H_NLOS = H_NLOS + h_channel(r_s(i,:), n_s(i,:), m, r_walls, n_walls, dA, 90) * ...
+%         h_channel(r_walls, n_walls, 1, r_r, n_r, area, FOV);
+% end
+
+P_optical_received = Pt .* H_LOS;
 P_optical_received_dBm = 10*log10(P_optical_received/1e-3);
 P_optical_received_dBm = reshape(P_optical_received_dBm, size(XR));
 

@@ -2,8 +2,8 @@ function [h, delay] = h_channel(r_s, n_s, m, r_r, n_r, A, FOV)
     %H_CHANNEL. Impulse response from the optical channel.
     %
     % Args:
-    %   - r_s = (x,y,z) position of the sender.
-    %   - n_s = (x,y,z) orientation of the sender.
+    %   - r_s = (x,y,z) position of the senders.
+    %   - n_s = (x,y,z) orientation of the senders.
     %   - m = Lambert mode of the sender.
     %   - r_r = (x,y,z) position of the receivers.
     %   - n_r = (x,y,z) position of the receivers.
@@ -15,8 +15,8 @@ function [h, delay] = h_channel(r_s, n_s, m, r_r, n_r, A, FOV)
     %   - h = Attenuation of the optical channel.
     %   - delay = Temporal delay to travel from the sender to the receiver.
     arguments(Input)
-        r_s (1, 3) double
-        n_s (1, 3) double
+        r_s (:, 3) double
+        n_s (:, 3) double
         m double
         r_r (:, 3) double
         n_r (:, 3) double
@@ -28,22 +28,27 @@ function [h, delay] = h_channel(r_s, n_s, m, r_r, n_r, A, FOV)
         delay (:,1) double
     end
 
-    % Pre-allocate vectors
-    distance = zeros(length(r_r), 1);
-    cos_emitter = zeros(size(distance));
-    cos_receiver = zeros(size(distance));
+    h = zeros(height(r_r), 1);
 
-    % Vector operations
-    for i=1:1:length(r_r)
-        distance(i) = norm(r_s - r_r(i,:));
-        cos_emitter(i) = dot(n_s, (r_r(i,:) - r_s) ./ distance(i));
-        cos_receiver(i) = dot(n_r(i,:), (r_s - r_r(i,:)) ./ distance(i));
+    for j=1:1:height(r_s)
+        % Pre-allocate vectors
+        distance = zeros(height(r_r), 1);
+        cos_emitter = zeros(size(distance));
+        cos_receiver = zeros(size(distance));
+    
+        % Vector operations
+        for i=1:1:length(r_r)
+            distance(i) = norm(r_s(j,:) - r_r(i,:));
+            cos_emitter(i) = dot(n_s(j,:), (r_r(i,:) - r_s(j,:)) ./ distance(i));
+            cos_receiver(i) = dot(n_r(i,:), (r_s(j,:) - r_r(i,:)) ./ distance(i));
+        end
+        cos_emitter(cos_emitter < 0) = 0;
+
+        h = h + ((m+1) / (2*pi)) .* cos_emitter.^m .* A .* cos_receiver ...
+            .* rect(acosd(cos_receiver) / FOV) ./ (distance.^2);
     end
-    cos_emitter(cos_emitter < 0) = 0;
-
-    % LOS channel response
-    h = ((m+1) / (2*pi)) .* cos_emitter.^m .* A .* cos_receiver ...
-        .* rect(acosd(cos_receiver) / FOV) ./ (distance.^2);
+    
+    
 
     delay = distance ./ physconst("LightSpeed");
 
