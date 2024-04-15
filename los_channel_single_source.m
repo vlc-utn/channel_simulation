@@ -8,6 +8,7 @@ clc; clear; close all;
 
 %% Room parameters
 lx = 6; ly = 6; lz = 3;             % Dimensions of the Room Environment [m]
+rho = 0.7;                          % Reflection coefficient of the wall. Value is from EN 12464-1. Section 4.2.2 "Reflectance of surfaces"
 
 %% Tx parameters
 half_angle = 70;                    % Semi angle of the LED at half power illumination [degree] (I(half_angle) = 1/2 * I(0), from the Lambertian distribution)
@@ -29,16 +30,22 @@ n_s = [ 0,  0,  1;
         0,  0,  1];
 
 %% Rx parameters
-area = 0.001;                       % Area of the Photodiode [m]
-Ts = 1;                             % Gain of the Optical Filter
-n = 1.5;                            % Refractive Index of the Lens
-FOV = 70;                           % Field of View of the Photodiode
+area = 0.001;                       % [m] Area of the Photodiode.
+Ts = 1;                             % Gain of the Optical Filter.
+n = 1.5;                            % Refractive Index of the Lens.
+FOV = 70;                           % [degree] Field of View of the Photodiode.
+z = 2.25;                           % [m] Position of the receiver in the "Z" axis.
+n_r = [0, 0, -1];                   % Orientation of the receiver (z=1 is looking down, z=-1 is looking up).
 
-% Position of receiver
-x = linspace(-lx/2, lx/2, lx*5);    % Points to evaluate in the "X" axis.
-y = linspace(-ly/2, ly/2, ly*5);    % Points to evaluate in the "Y" axis.
-z = 2.25;                           % Points to evaluate in the "Z" axis.
-n_r = [0, 0, -1];                   % Orientation of the receiver (z=1 is looking down, z=-1 is looking up)
+%% Simulation parameters
+% Number of points to evaluate for the simulation
+Nx = round(lx*5);
+Ny = round(ly*5);
+Nz = round(lz*5);
+dA = lz*ly / (Ny*Nz);                   % Differential area used for wall bounces. This value is suggested (Ghassemlooy 2018), page 90
+dt = sqrt(dA)/physconst("LightSpeed");  % Delta time for simulation, as proposed in (Barry, 1993).
+t_vector = 0:dt:30e-9;                  % Temporal vector for simulation.
+
 
 %% Variable check
 if (height(r_s) ~= height(n_s))
@@ -55,11 +62,34 @@ for i=1:1:height(r_s)
     end
 end
 
-%% Calculations
+%% Vector manipulation
 
-% Intermediate variables
-m = -log(2)/log(cosd(half_angle));  % Lamberts Mode Number for Tx
-g = (n^2)/(sind(FOV).^2);           % Gain of the optical concentrator
+% Receiver position
+x = linspace(-lx/2, lx/2, Nx);      % Points to evaluate in the "X" axis.
+y = linspace(-ly/2, ly/2, Ny);      % Points to evaluate in the "Y" axis.
+[XR, YR, ZR] = meshgrid(x, y, z);   % Obtain all possible points in the (X,Y,Z) space
+r_r = [XR(:), YR(:), ZR(:)];        % Vectorize. Position of receiver as a 3D vector.
+
+% Coordinates for the four walls.
+n_lw = [0 1 0];     % Orientation left wall.
+n_rw = [0 -1 0];    % Orientation right wall.
+n_bw = [1 0 0];     % Orientation back wall.
+n_fw = [-1 0 0];    % Orientation front wall.
+
+[X_LW, Y_LW, Z_LW] = meshgrid(x, -ly/2, z);
+[X_RW, Y_RW, Z_RW] = meshgrid(x, ly/2, z);
+[X_BW, Y_BW, Z_BW] = meshgrid(-lx/2, y, z);
+[X_FW, Y_FW, Z_FW] = meshgrid(lx/2, y, z);
+
+r_walls = [X_LW(:), Y_LW(:), Z_LW(:);
+           X_RW(:), Y_RW(:), Z_RW(:);
+           X_BW(:), Y_BW(:), Z_BW(:);
+           X_FW(:), Y_FW(:), Z_FW(:)];
+
+n_walls = [repmat(n_lw, numel(X_LW), 1);
+           repmat(n_rw, numel(X_RW), 1);
+           repmat(n_bw, numel(X_BW), 1);
+           repmat(n_fw, numel(X_FW), 1)];
 
 % Normalize orientation of senders
 for i=1:1:height(n_s)
@@ -68,48 +98,25 @@ end
 
 % Normalize orientation of receiver
 n_r = n_r ./ norm(n_r);
+n_r = repmat(n_r, numel(r_r), 1);
 
-% 3D coordinates
-[XR, YR, ZR] = meshgrid(x, y, z);   % Obtain all possible points in the (X,Y,Z) space
-r_r = [XR(:), YR(:), ZR(:)];        % Vectorize. Position of receiver as a 3D vector.
+%% Channel calculations
 
-Iluminance = zeros(size(XR));
-P_optical_received = zeros(size(XR));
+% Intermediate variables
+m = -log(2)/log(cosd(half_angle));  % Lamberts Mode Number for Tx
+g = (n^2)/(sind(FOV).^2);           % Gain of the optical concentrator
 
-% For each sender, calculate the received power
-for s_id=1:1:height(n_s)
-    % Pre-allocate vectors
-    distance = zeros(1, length(r_r));
-    cos_emitter = zeros(size(distance));
-    cos_receiver = zeros(size(distance));
+H_total = zeros(height(r_r), 1);
 
-    % Vector operations
-    for i=1:1:length(r_r)
-        distance(i) = norm(r_s(s_id,:) - r_r(i,:));
-        cos_emitter(i) = dot(n_s(s_id,:), (r_r(i,:) - r_s(s_id,:)) ./ distance(i));
-        cos_receiver(i) = dot(n_r, (r_s(s_id,:) - r_r(i,:)) ./ distance(i));
-    end
-    cos_emitter(cos_emitter < 0) = 0;
-    cos_receiver(acosd(cos_receiver) > FOV) = 0;
-    cos_receiver(cos_receiver < 0) = 0;
-
-    % Revert to meshgrid coordinates
-    distance = reshape(distance, size(XR));
-    cos_emitter = reshape(cos_emitter, size(XR));
-    cos_receiver = reshape(cos_receiver, size(XR));
-
-    % LOS channel response
-    H_LOS = ( (m+1) / (2*pi) ) .* cos_emitter.^m .* ...
-        ( area .* cos_receiver ./ (distance.^2) ) .* Ts .* g;
-
-    % Optical Received power
-    P_optical_received = P_optical_received + Pt .* H_LOS;
-
-    % Luminic received power [lx]
-    Iluminance = Iluminance + ( (m+1) / (2*pi) ) .* I0 .* cos_emitter.^m ./ (distance.^2);
+for i=1:1:height(n_s)
+    H_total = H_total + h_channel(r_s(i,:), n_s(i,:), m, r_r, n_r, area, FOV);
 end
 
+H_total = H_total * Ts *g;
+
+P_optical_received = Pt .* H_total;
 P_optical_received_dBm = 10*log10(P_optical_received/1e-3);
+P_optical_received_dBm = reshape(P_optical_received_dBm, size(XR));
 
 %% Figure
 figure();
@@ -119,11 +126,3 @@ xlabel('x in m');
 ylabel('y in m');
 zlabel('Received Optical Power in dBm');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_received_dBm)), max(max(P_optical_received_dBm))]);
-
-figure();
-surfc(x, y, Iluminance);
-title(sprintf('Iluminance E at %.02fm from the roof', z));
-xlabel('x [m]');
-ylabel('y [m]');
-zlabel('Iluminance E [lx]');
-axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Iluminance)), max(max(Iluminance))]);
