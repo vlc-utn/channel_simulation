@@ -21,4 +21,4 @@ Nz = round(lz*5);
 
 dA = lz*ly / (Ny*Nz);                   % Differential area used for wall bounces. This value is suggested in (Ghassemlooy 2018), page 90
 dt = sqrt(dA)/physconst("LightSpeed");  % Delta time for simulation, as proposed in (Barry, 1993).
-t_vector = 0:dt:40e-9;                  % Temporal vector for simulation.
+t_vector = 0:dt:60e-9;                  % Temporal vector for simulation.
