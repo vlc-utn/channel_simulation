@@ -55,12 +55,6 @@ n_walls = [repmat(n_lw, numel(X_LW), 1);
            repmat(n_bw, numel(X_BW), 1);
            repmat(n_fw, numel(X_FW), 1)];
 
-% If the wall and the receiver have the same z coordinate, then distance
-% might be zero and solution can't be computed.
-if (find(z_wall == z_rx))
-    z_rx = z_rx - (z_wall(2) - z_wall(1))/100;
-end
-
 x_rx = linspace(-lx/2, lx/2, Nx);           % Points to evaluate in the "X" axis for the receiver.
 y_rx = linspace(-ly/2, ly/2, Ny);           % Points to evaluate in the "Y" axis for the receiver.
 [XR, YR, ZR] = meshgrid(x_rx, y_rx, z_rx);  % Obtain all possible points in the (X,Y,Z) space for the receiver
@@ -86,18 +80,35 @@ h_s(:,1) = 1;
 % LOS channel response
 H_LOS = h_channel(r_s, n_s, m, h_s, r_r, n_r, area, FOV, t_vector) * Ts * g;
 
-P_optical_received = Pt .* sum(H_LOS, 2);
-P_optical_received_dBm = 10*log10(P_optical_received/1e-3);
-P_optical_received_dBm = reshape(P_optical_received_dBm, size(XR));
+P_optical_los_dbm = reshape( 10*log10(Pt .* sum(H_LOS, 2) / 1e-3) , size(XR) );
 
-% NLOS channel response
+% NLOS first order channel response
 H_TX_TO_WALL = h_channel(r_s, n_s, m, h_s, r_walls, n_walls, dA, 90, t_vector);
 H_WALL_TO_RX = h_channel(r_walls, n_walls, 1, H_TX_TO_WALL, r_r, n_r, area, FOV, t_vector);
-H_NLOS = H_WALL_TO_RX * Ts * g * rho;
+H_NLOS1 = H_WALL_TO_RX * Ts * g * rho;
 
-P_optical_received_NLOS = Pt .* sum(H_NLOS, 2);
-P_optical_received_NLOS_dBm = 10*log10(P_optical_received_NLOS/1e-3);
-P_optical_received_NLOS_dBm = reshape(P_optical_received_NLOS_dBm, size(XR));
+P_optical_nlos_dbm = reshape( 10*log10(Pt .* sum(H_NLOS1, 2) / 1e-3) , size(XR) );
+
+% NLOS second order channel response
+H_WALL_2 = h_channel(r_walls, n_walls, 1, H_TX_TO_WALL, r_walls, n_walls, dA, 90, t_vector);
+H_WALL_2_TO_RX = h_channel(r_walls, n_walls, 1, H_WALL_2, r_r, n_r, area, FOV, t_vector);
+H_NLOS2 = H_WALL_2_TO_RX * Ts * g *rho^2;
+
+P_optical_nlos2_dbm = reshape( 10*log10(Pt .* sum(H_NLOS2, 2) / 1e-3) , size(XR) );
+
+% NLOS third order channel response
+H_WALL_3 = h_channel(r_walls, n_walls, 1, H_WALL_2, r_walls, n_walls, dA, 90, t_vector);
+H_WALL_3_TO_RX = h_channel(r_walls, n_walls, 1, H_WALL_3, r_r, n_r, area, FOV, t_vector);
+H_NLOS3 = H_WALL_3_TO_RX * Ts * g *rho^3;
+
+P_optical_nlos3_dbm = reshape( 10*log10(Pt .* sum(H_NLOS3, 2) / 1e-3) , size(XR) );
+
+% Total channel response
+H_NLOS_TOTAL = H_NLOS1 + H_NLOS2 + H_NLOS3;
+H = H_LOS + H_NLOS_TOTAL;
+P_optical_total = Pt .* sum(H, 2);
+P_optical_total_dbm = 10*log10(P_optical_total/1e-3);
+P_optical_total_dbm = reshape(P_optical_total_dbm, size(XR));
 
 % Delay
 mean_delay = zeros(1, height(r_r));
@@ -107,14 +118,12 @@ Drms_nlos = zeros(size(mean_delay));
 mean_delay_los = zeros(size(mean_delay));
 Drms_los = zeros(size(mean_delay));
 
-H = H_LOS + H_NLOS;
-
 for j=1:1:height(r_r)
     mean_delay(j) = sum( (H(j,:)).^2 .* t_vector ) / sum(H(j,:).^2);
     Drms(j) = sqrt( sum( (t_vector - mean_delay(j)).^2 .* H(j,:).^2 ) / sum(H(j,:).^2) );
 
-    mean_delay_nlos(j) = sum( (H_NLOS(j,:)).^2 .* t_vector ) / sum(H_NLOS(j,:).^2);
-    Drms_nlos(j) = sqrt( sum( (t_vector - mean_delay_nlos(j)).^2 .* H_NLOS(j,:).^2 ) / sum(H_NLOS(j,:).^2));
+    mean_delay_nlos(j) = sum( (H_NLOS_TOTAL(j,:)).^2 .* t_vector ) / sum(H_NLOS_TOTAL(j,:).^2);
+    Drms_nlos(j) = sqrt( sum( (t_vector - mean_delay_nlos(j)).^2 .* H_NLOS_TOTAL(j,:).^2 ) / sum(H_NLOS_TOTAL(j,:).^2));
 
     mean_delay_los(j) = sum( (H_LOS(j,:)).^2 .* t_vector) / sum(H_LOS(j,:).^2);
     Drms_los(j) = sqrt( sum( (t_vector - mean_delay_los(j)).^2 .* H_LOS(j,:).^2) / sum(H_LOS(j,:).^2));
@@ -137,20 +146,37 @@ Drms_los = Drms_los / 1e-9;
 
 %% Figure
 figure();
-surfc(x_rx, y_rx, P_optical_received_dBm);
+subplot(2,2,1);
+surfc(x_rx, y_rx, P_optical_los_dbm);
 title('Received Optical Power in Indoor - VLC System corresponding to the LOS path');
 xlabel('x in m');
 ylabel('y in m');
 zlabel('Received Optical Power in dBm');
-axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_received_dBm)), max(max(P_optical_received_dBm))]);
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_los_dbm)), max(max(P_optical_los_dbm))]);
 
-figure();
-surfc(x_rx, y_rx, P_optical_received_NLOS_dBm);
+subplot(2,2,2);
+surfc(x_rx, y_rx, P_optical_nlos_dbm);
 title('Received Optical Power in Indoor - VLC System corresponding to the NLOS path');
 xlabel('x in m');
 ylabel('y in m');
 zlabel('Received Optical Power in dBm');
-axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_received_NLOS_dBm)), max(max(P_optical_received_NLOS_dBm))]);
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos_dbm)), max(max(P_optical_nlos_dbm))]);
+
+subplot(2,2,3);
+surfc(x_rx, y_rx, P_optical_nlos2_dbm);
+title('Received Optical Power in Indoor - VLC System corresponding to the NLOS path');
+xlabel('x in m');
+ylabel('y in m');
+zlabel('Received Optical Power in dBm');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos2_dbm)), max(max(P_optical_nlos2_dbm))]);
+
+subplot(2,2,4);
+surfc(x_rx, y_rx, P_optical_nlos3_dbm);
+title('Received Optical Power in Indoor - VLC System corresponding to the NLOS path');
+xlabel('x in m');
+ylabel('y in m');
+zlabel('Received Optical Power in dBm');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos3_dbm)), max(max(P_optical_nlos3_dbm))]);
 
 figure();
 surfc(x_rx, y_rx, mean_delay);
