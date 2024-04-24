@@ -1,10 +1,11 @@
-function [h, delay] = h_channel(r_s, n_s, m, r_r, n_r, A, FOV)
+function [h, delay] = h_channel(r_s, n_s, m, h_s, r_r, n_r, A, FOV)
     %H_CHANNEL. Impulse response from the optical channel.
     %
     % Args:
     %   - r_s = (x,y,z) position of the senders.
     %   - n_s = (x,y,z) orientation of the senders.
     %   - m = Lambert mode of the sender.
+    %   - h_s = Impulse response carried from the previous sender.
     %   - r_r = (x,y,z) position of the receivers.
     %   - n_r = (x,y,z) position of the receivers.
     %   - A = area of all the receivers.
@@ -18,6 +19,7 @@ function [h, delay] = h_channel(r_s, n_s, m, r_r, n_r, A, FOV)
         r_s (:, 3) double
         n_s (:, 3) double
         m double
+        h_s (:,1) double
         r_r (:, 3) double
         n_r (:, 3) double
         A double
@@ -44,7 +46,7 @@ function [h, delay] = h_channel(r_s, n_s, m, r_r, n_r, A, FOV)
         end
         cos_emitter(cos_emitter < 0) = 0;
 
-        h = h + ((m+1) / (2*pi)) .* cos_emitter.^m .* A .* cos_receiver ...
+        h = h + h_s(j,:) .* ((m+1) / (2*pi)) .* cos_emitter.^m .* A .* cos_receiver ...
             .* rect(acosd(cos_receiver) / FOV) ./ (distance.^2);
     end
     
