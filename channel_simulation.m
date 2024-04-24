@@ -1,12 +1,11 @@
-%% LOS Channel Single Source
-% Simulate LOS channel gain for a single source.
+%% Channel Simulation
+% Simulate optical channel.
 % This code replicates the results from:
 %   Visible Light Communication: A Comprehensive Theory and Applications
 %   with MATLAB®. Page 52.
 % And:
 %   "Optical wireless communications: system and channel modelling with
 %   MATLAB". Page 90.
-
 clc; clear; close all;
 
 addpath("devices");
@@ -56,7 +55,6 @@ n_walls = [repmat(n_lw, numel(X_LW), 1);
            repmat(n_bw, numel(X_BW), 1);
            repmat(n_fw, numel(X_FW), 1)];
 
-% Receiver position
 % If the wall and the receiver have the same z coordinate, then distance
 % might be zero and solution can't be computed.
 if (find(z_wall == z_rx))
