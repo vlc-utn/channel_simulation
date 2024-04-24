@@ -110,39 +110,26 @@ P_optical_total = Pt .* sum(H, 2);
 P_optical_total_dbm = 10*log10(P_optical_total/1e-3);
 P_optical_total_dbm = reshape(P_optical_total_dbm, size(XR));
 
-% Delay
-mean_delay = zeros(1, height(r_r));
-Drms = zeros(size(mean_delay));
-mean_delay_nlos = zeros(size(mean_delay));
-Drms_nlos = zeros(size(mean_delay));
-mean_delay_los = zeros(size(mean_delay));
-Drms_los = zeros(size(mean_delay));
+%% Delay calculations
+mean_delay = sum( H.^2 .* t_vector, 2) ./ sum(H.^2, 2);
+Drms = sqrt(sum((t_vector-mean_delay).^2 .* H.^2, 2) ./ sum(H.^2, 2));
+mean_delay = reshape(mean_delay, size(XR)) / 1e-9;
+Drms = reshape(Drms, size(XR)) / 1e-9;
 
-for j=1:1:height(r_r)
-    mean_delay(j) = sum( (H(j,:)).^2 .* t_vector ) / sum(H(j,:).^2);
-    Drms(j) = sqrt( sum( (t_vector - mean_delay(j)).^2 .* H(j,:).^2 ) / sum(H(j,:).^2) );
+mean_delay_nlos1 = sum( H_NLOS1.^2 .* t_vector, 2) ./ sum(H_NLOS1.^2, 2);
+Drms_nlos1 = sqrt(sum((t_vector-mean_delay_nlos1).^2 .* H_NLOS1.^2, 2) ./ sum(H_NLOS1.^2, 2));
+mean_delay_nlos1 = reshape(mean_delay_nlos1, size(XR)) / 1e-9;
+Drms_nlos1 = reshape(Drms_nlos1, size(XR)) / 1e-9;
 
-    mean_delay_nlos(j) = sum( (H_NLOS_TOTAL(j,:)).^2 .* t_vector ) / sum(H_NLOS_TOTAL(j,:).^2);
-    Drms_nlos(j) = sqrt( sum( (t_vector - mean_delay_nlos(j)).^2 .* H_NLOS_TOTAL(j,:).^2 ) / sum(H_NLOS_TOTAL(j,:).^2));
+mean_delay_nlos2 = sum( (H_NLOS1 + H_NLOS2).^2 .* t_vector, 2) ./ sum((H_NLOS1 + H_NLOS2).^2, 2);
+Drms_nlos2 = sqrt(sum((t_vector-mean_delay_nlos2).^2 .* (H_NLOS1 + H_NLOS2).^2, 2) ./ sum((H_NLOS1 + H_NLOS2).^2, 2));
+mean_delay_nlos2 = reshape(mean_delay_nlos2, size(XR)) / 1e-9;
+Drms_nlos2 = reshape(Drms_nlos2, size(XR)) / 1e-9;
 
-    mean_delay_los(j) = sum( (H_LOS(j,:)).^2 .* t_vector) / sum(H_LOS(j,:).^2);
-    Drms_los(j) = sqrt( sum( (t_vector - mean_delay_los(j)).^2 .* H_LOS(j,:).^2) / sum(H_LOS(j,:).^2));
-end
-
-mean_delay = reshape(mean_delay, size(XR));
-mean_delay = mean_delay / 1e-9;
-Drms = reshape(Drms, size(XR));
-Drms = Drms / 1e-9;
-
-mean_delay_nlos = reshape(mean_delay_nlos, size(XR));
-mean_delay_nlos = mean_delay_nlos /1e-9;
-Drms_nlos = reshape(Drms_nlos, size(XR));
-Drms_nlos = Drms_nlos / 1e-9;
-
-mean_delay_los = reshape(mean_delay_los, size(XR));
-mean_delay_los = mean_delay_los /1e-9;
-Drms_los = reshape(Drms_los, size(XR));
-Drms_los = Drms_los / 1e-9;
+mean_delay_nlos3 = sum( H_NLOS_TOTAL.^2 .* t_vector, 2) ./ sum(H_NLOS_TOTAL.^2, 2);
+Drms_nlos3 = sqrt(sum((t_vector-mean_delay_nlos3).^2 .* H_NLOS_TOTAL.^2, 2) ./ sum(H_NLOS_TOTAL.^2, 2));
+mean_delay_nlos3 = reshape(mean_delay_nlos3, size(XR)) / 1e-9;
+Drms_nlos3 = reshape(Drms_nlos3, size(XR)) / 1e-9;
 
 %% Figure
 figure(NumberTitle="off", Name="Optical Power");
@@ -178,34 +165,43 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos3_dbm)), max(max(P_optical_nlos3_dbm))]);
 
-figure();
+figure(NumberTitle="off", Name="Delay Spread");
+subplot(3,2,1);
 surfc(x_rx, y_rx, mean_delay);
 title('Mean delay');
-xlabel('x in m');
-ylabel('y in m');
+xlabel('x [m]');
+ylabel('y [m]');
 zlabel('Mean delay spread [ns]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(mean_delay)), max(max(mean_delay))]);
 
-figure();
+subplot(3,2,2);
 surfc(x_rx, y_rx, Drms);
-title('RMS spread');
-xlabel('x in m');
-ylabel('y in m');
-zlabel('RMS spread [ns]');
+title('Total RMS Spread');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('RMS Spread [ns]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Drms)), max(max(Drms))]);
 
-figure();
-surfc(x_rx, y_rx, Drms_nlos);
-title('RMS spread NLOS');
-xlabel('x in m');
-ylabel('y in m');
-zlabel('RMS spread NLOS [ns]');
-axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Drms_nlos)), max(max(Drms_nlos))]);
+subplot(3,2,3);
+surfc(x_rx, y_rx, Drms_nlos1);
+title('RMS Spread with NLOS1');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('RMS Spread [ns]');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Drms_nlos1)), max(max(Drms_nlos1))]);
 
-figure();
-surfc(x_rx, y_rx, Drms_los);
-title('RMS spread LOS');
-xlabel('x in m');
-ylabel('y in m');
-zlabel('RMS spread LOS [ns]');
-axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Drms_los)), max(max(Drms_los))]);
+subplot(3,2,4);
+surfc(x_rx, y_rx, Drms_nlos2);
+title('RMS Spread with NLOS2');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('RMS Spread [ns]');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Drms_nlos2)), max(max(Drms_nlos2))]);
+
+subplot(3,2,5);
+surfc(x_rx, y_rx, Drms_nlos3);
+title('RMS Spread with NLOS3');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('RMS Spread [ns]');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Drms_nlos3)), max(max(Drms_nlos3))]);
