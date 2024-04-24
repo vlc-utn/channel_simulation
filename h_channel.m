@@ -36,9 +36,10 @@ function [h] = h_channel(r_s, n_s, m, h_s, r_r, n_r, A, FOV, t_vector)
     for j=1:1:height(r_s)
         % Pre-allocate vectors
         h_aux = zeros(height(r_r), length(t_vector));
-    
+
         % Vector operations
         distance = vecnorm(r_s(j,:) - r_r, 2, 2);
+        distance(distance == 0) = 1;
         cos_emitter = dot(repmat(n_s(j,:), height(r_r), 1), (r_r - r_s(j,:)) ./ distance, 2);
         cos_receiver = dot(n_r, (r_s(j,:) - r_r) ./ distance, 2);
         cos_emitter(cos_emitter < 0) = 0;
