@@ -145,37 +145,37 @@ Drms_los = reshape(Drms_los, size(XR));
 Drms_los = Drms_los / 1e-9;
 
 %% Figure
-figure();
+figure(NumberTitle="off", Name="Optical Power");
 subplot(2,2,1);
 surfc(x_rx, y_rx, P_optical_los_dbm);
-title('Received Optical Power in Indoor - VLC System corresponding to the LOS path');
-xlabel('x in m');
-ylabel('y in m');
-zlabel('Received Optical Power in dBm');
+title('LOS Optical Power');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_los_dbm)), max(max(P_optical_los_dbm))]);
 
 subplot(2,2,2);
 surfc(x_rx, y_rx, P_optical_nlos_dbm);
-title('Received Optical Power in Indoor - VLC System corresponding to the NLOS path');
-xlabel('x in m');
-ylabel('y in m');
-zlabel('Received Optical Power in dBm');
+title('NLOS 1st Reflection');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos_dbm)), max(max(P_optical_nlos_dbm))]);
 
 subplot(2,2,3);
 surfc(x_rx, y_rx, P_optical_nlos2_dbm);
-title('Received Optical Power in Indoor - VLC System corresponding to the NLOS path');
-xlabel('x in m');
-ylabel('y in m');
-zlabel('Received Optical Power in dBm');
+title('NLOS 2nd Reflection');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos2_dbm)), max(max(P_optical_nlos2_dbm))]);
 
 subplot(2,2,4);
 surfc(x_rx, y_rx, P_optical_nlos3_dbm);
-title('Received Optical Power in Indoor - VLC System corresponding to the NLOS path');
-xlabel('x in m');
-ylabel('y in m');
-zlabel('Received Optical Power in dBm');
+title('NLOS 3rd Reflection');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos3_dbm)), max(max(P_optical_nlos3_dbm))]);
 
 figure();
