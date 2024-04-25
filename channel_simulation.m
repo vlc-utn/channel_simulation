@@ -106,9 +106,10 @@ P_optical_nlos3_dbm = reshape( 10*log10(Pt .* sum(H_NLOS3, 2) / 1e-3) , size(XR)
 % Total channel response
 H_NLOS_TOTAL = H_NLOS1 + H_NLOS2 + H_NLOS3;
 H = H_LOS + H_NLOS_TOTAL;
-P_optical_total = Pt .* sum(H, 2);
-P_optical_total_dbm = 10*log10(P_optical_total/1e-3);
-P_optical_total_dbm = reshape(P_optical_total_dbm, size(XR));
+P_optical_total_dbm = reshape( 10*log10(Pt .* sum(H, 2) / 1e-3) , size(XR) );
+
+% Iluminance
+Iluminance = reshape(get_iluminance(r_s, n_s, m, r_r, n_r, I0), size(XR));
 
 %% Delay calculations
 mean_delay = sum( H.^2 .* t_vector, 2) ./ sum(H.^2, 2);
@@ -131,9 +132,15 @@ Drms_nlos3 = sqrt(sum((t_vector-mean_delay_nlos3).^2 .* H_NLOS_TOTAL.^2, 2) ./ s
 mean_delay_nlos3 = reshape(mean_delay_nlos3, size(XR)) / 1e-9;
 Drms_nlos3 = reshape(Drms_nlos3, size(XR)) / 1e-9;
 
+Bc = 1./(10*Drms*1e-9)./1e6;  % Ancho de banda del canal, según "Optical wireless communications: system and channel modelling with MATLAB, pág 90"
+                              % y según "Visible Light Communications, pág 84"
+
+% Trim corner values that tend to infinity
+Bc(Bc > 500) = 500;
+
 %% Figure
 figure(NumberTitle="off", Name="Optical Power");
-subplot(2,2,1);
+subplot(3,2,1);
 surfc(x_rx, y_rx, P_optical_los_dbm);
 title('LOS Optical Power');
 xlabel('x [m]');
@@ -141,7 +148,7 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_los_dbm)), max(max(P_optical_los_dbm))]);
 
-subplot(2,2,2);
+subplot(3,2,2);
 surfc(x_rx, y_rx, P_optical_nlos_dbm);
 title('NLOS 1st Reflection');
 xlabel('x [m]');
@@ -149,7 +156,7 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos_dbm)), max(max(P_optical_nlos_dbm))]);
 
-subplot(2,2,3);
+subplot(3,2,3);
 surfc(x_rx, y_rx, P_optical_nlos2_dbm);
 title('NLOS 2nd Reflection');
 xlabel('x [m]');
@@ -157,13 +164,21 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos2_dbm)), max(max(P_optical_nlos2_dbm))]);
 
-subplot(2,2,4);
+subplot(3,2,4);
 surfc(x_rx, y_rx, P_optical_nlos3_dbm);
 title('NLOS 3rd Reflection');
 xlabel('x [m]');
 ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos3_dbm)), max(max(P_optical_nlos3_dbm))]);
+
+subplot(3,2,5);
+surfc(x_rx, y_rx, P_optical_total_dbm);
+title('Total Optical Power');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('Optical Power [dBm]');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_total_dbm)), max(max(P_optical_total_dbm))]);
 
 figure(NumberTitle="off", Name="Delay Spread");
 subplot(3,2,1);
@@ -205,3 +220,19 @@ xlabel('x [m]');
 ylabel('y [m]');
 zlabel('RMS Spread [ns]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Drms_nlos3)), max(max(Drms_nlos3))]);
+
+figure(NumberTitle="off", Name="Iluminance");
+surfc(x_rx, y_rx, Iluminance);
+title('Iluminance');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('I[lx]');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Iluminance)), max(max(Iluminance))]);
+
+figure(NumberTitle="off", Name="Channel bandwidth");
+surfc(x_rx, y_rx, Bc);
+title('Channel bandwidth for flat response');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('Bc[MHz]');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Bc)), max(max(Bc))]);
