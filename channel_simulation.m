@@ -9,9 +9,9 @@
 clc; clear; close all;
 
 addpath("devices");
-room1;
-pd1;
-led1;
+room1;      % Select room environment
+pd1;        % Selecto photodetector
+led1;       % Select LED device
 
 %% Variable check
 if (height(r_s) ~= height(n_s))
@@ -138,9 +138,17 @@ Bc = 1./(10*Drms*1e-9)./1e6;  % Ancho de banda del canal, según "Optical wirele
 % Trim corner values that tend to infinity
 Bc(Bc > 500) = 500;
 
-%% Figure
+%% Figure optical power
 figure(NumberTitle="off", Name="Optical Power");
 subplot(3,2,1);
+surfc(x_rx, y_rx, Iluminance);
+title('Iluminance');
+xlabel('x [m]');
+ylabel('y [m]');
+zlabel('I [lx]');
+axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Iluminance)), max(max(Iluminance))]);
+
+subplot(3,2,2);
 surfc(x_rx, y_rx, P_optical_los_dbm);
 title('LOS Optical Power');
 xlabel('x [m]');
@@ -148,7 +156,7 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_los_dbm)), max(max(P_optical_los_dbm))]);
 
-subplot(3,2,2);
+subplot(3,2,3);
 surfc(x_rx, y_rx, P_optical_nlos_dbm);
 title('NLOS 1st Reflection');
 xlabel('x [m]');
@@ -156,7 +164,7 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos_dbm)), max(max(P_optical_nlos_dbm))]);
 
-subplot(3,2,3);
+subplot(3,2,4);
 surfc(x_rx, y_rx, P_optical_nlos2_dbm);
 title('NLOS 2nd Reflection');
 xlabel('x [m]');
@@ -164,7 +172,7 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos2_dbm)), max(max(P_optical_nlos2_dbm))]);
 
-subplot(3,2,4);
+subplot(3,2,5);
 surfc(x_rx, y_rx, P_optical_nlos3_dbm);
 title('NLOS 3rd Reflection');
 xlabel('x [m]');
@@ -172,7 +180,7 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_nlos3_dbm)), max(max(P_optical_nlos3_dbm))]);
 
-subplot(3,2,5);
+subplot(3,2,6);
 surfc(x_rx, y_rx, P_optical_total_dbm);
 title('Total Optical Power');
 xlabel('x [m]');
@@ -180,6 +188,7 @@ ylabel('y [m]');
 zlabel('Optical Power [dBm]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(P_optical_total_dbm)), max(max(P_optical_total_dbm))]);
 
+%% Figure delay spread
 figure(NumberTitle="off", Name="Delay Spread");
 subplot(3,2,1);
 surfc(x_rx, y_rx, mean_delay);
@@ -221,18 +230,57 @@ ylabel('y [m]');
 zlabel('RMS Spread [ns]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Drms_nlos3)), max(max(Drms_nlos3))]);
 
-figure(NumberTitle="off", Name="Iluminance");
-surfc(x_rx, y_rx, Iluminance);
-title('Iluminance');
-xlabel('x [m]');
-ylabel('y [m]');
-zlabel('I[lx]');
-axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Iluminance)), max(max(Iluminance))]);
-
-figure(NumberTitle="off", Name="Channel bandwidth");
+subplot(3,2,6);
 surfc(x_rx, y_rx, Bc);
 title('Channel bandwidth for flat response');
 xlabel('x [m]');
 ylabel('y [m]');
 zlabel('Bc[MHz]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(Bc)), max(max(Bc))]);
+
+
+%% Figure temporal response
+figure(NumberTitle="off", Name="Temporal Response");
+point = [0 0 3];                                % Point to be plotted
+dist = vecnorm(point - r_r, 2, 2);
+[~, index] = min(dist);                         % Selecting point to plot
+
+N0 = 1024*2^(nextpow2(length(H(index,:))));     % Samples for the fft
+df = 1/(N0*dt) / 1e6;
+freq= df*(-N0/2:N0/2-1);                        % Frequency vector
+
+DFT = abs(fftshift(fft(H(index,:), N0)));
+DFT_dB = 10*log10(DFT);
+
+DFT_NLOS = abs(fftshift(fft(H_NLOS_TOTAL(index,:), N0)));
+DFT_NLOS_dB = 10*log10(DFT_NLOS);
+
+subplot(2,2,1);
+plot(t_vector./1e-9, H_LOS(index,:), t_vector./1e-9, H_NLOS1(index,:), t_vector./1e-9, H_NLOS2(index,:), t_vector./1e-9, H_NLOS3(index,:));
+title(sprintf("H-LOS(t) at (%0.2f; %0.2f; %0.2f)", r_r(index,1), r_r(index,2), r_r(index,3)));
+xlabel('time [ns]');
+ylabel('h(t)');
+legend("h-los(t)", "h_nlos1(t)", "h_nlos2(t)", "h_nlos3(t)");
+grid on;
+
+subplot(2,2,2);
+plot(t_vector./1e-9, H_NLOS1(index,:), t_vector./1e-9, H_NLOS2(index,:), t_vector./1e-9, H_NLOS3(index,:));
+title(sprintf("H-NLOS(t) at (%0.2f; %0.2f; %0.2f)", r_r(index,1), r_r(index,2), r_r(index,3)));
+xlabel('time [ns]');
+ylabel('h(t)');
+legend("h-nlos1(t)", "h-nlos2(t)", "h-nlos3(t)");
+
+subplot(2,2,3);
+plot(freq, DFT_dB)
+xlabel("Freq [MHz]");
+ylabel("|H(f)| [dB]");
+title("DFT of |H(f)|");
+grid on;
+
+subplot(2,2,4);
+plot(freq, DFT_NLOS_dB);
+xlabel("Freq [MHz]");
+ylabel("|H-NLOS(f)| [dB]");
+title("DFT of |H-NLOS(f)|");
+grid on;
+
