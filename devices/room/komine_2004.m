@@ -21,9 +21,9 @@ z_rx = 3-0.85;          % [m] Position of the receiver in the "Z" axis.
 n_r = [0, 0, -1];       % Orientation of the receiver (z=1 is looking down, z=-1 is looking up).
 
 % Number of points to evaluate for the simulation
-Nx = round(lx*4);
-Ny = round(ly*4);
-Nz = round(lz*4);
+Nx = round(lx*5);
+Ny = round(ly*5);
+Nz = round(lz*5);
 
 dA = lz*ly / (Ny*Nz);                   % Differential area used for wall bounces. This value is suggested in (Ghassemlooy 2018), page 90
 dt = sqrt(dA)/physconst("LightSpeed");  % Delta time for simulation, as proposed in (Barry, 1993).
