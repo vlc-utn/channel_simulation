@@ -11,7 +11,7 @@ function [snr, S, N] = get_snr(P_optical_total, circuit, pd)
 
     % Shot Noise
     sigma_shot = 2*q*responsivity*P_optical_total*B + 2*q*I_bg*I2*B;
-    
+
     % Thermal noise
     n_shunt = (4*Kb*T / Rin + dia_df) * B * I2;
     n_series = dea_df * (B*I2 / Rin^2 + (2*pi*Ct)^2 * B^3 * I3);
@@ -22,6 +22,10 @@ function [snr, S, N] = get_snr(P_optical_total, circuit, pd)
 
     % SNR
     snr = S ./ N;
+
+    fprintf("Shot noise: %0.2e [W]\n", mean(mean(sigma_shot)));
+    fprintf("Thermal noise: %0.2e [W]\n", mean(mean(sigma_thermal)));
+    fprintf("Signal Power: %0.2e [W]\n", mean(mean(S)));
 end
 
 

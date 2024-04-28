@@ -9,15 +9,16 @@
 clc; clear; close all;
 
 %% Input arguments
-room = "devices/room/komine_2004";          % Select room environment
-led = "devices/leds/komine_2004";           % Select LED device
-pd = "devices/pd/komine_2004";              % Select photodetector
-circuit = "devices/circuit/komine_2004";    % Select receiving circuit
+room = "devices/room/channel_modeling_2018";        % Select room environment
+led = "devices/leds/generic_led";                   % Select LED device
+pd = "devices/pd/VEMD5510C";                        % Select photodetector
+circuit = "devices/circuit/LMH32401";               % Select receiving circuit
 
 %% Variable check
-run(room);      
-run(pd);  
-run(led);  
+run(room);
+run(pd);
+run(led);
+run(circuit);
 
 if (height(r_s) ~= height(n_s))
     error("Different number of position and orientations for Tx. (r_s and n_s don't match)");
@@ -304,6 +305,6 @@ surfc(x_rx, y_rx, snr_db);
 title('SnR');
 xlabel('x [m]');
 ylabel('y [m]');
-zlabel('SnR [db]');
+zlabel('SnR [dB]');
 axis([-lx/2, lx/2, -ly/2, ly/2, min(min(snr_db)), max(max(snr_db))]);
 
