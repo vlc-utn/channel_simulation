@@ -1,3 +1,22 @@
+%% PD BPV10
+% https://ar.mouser.com/ProductDetail/Vishay-Semiconductors/BPV10?qs=%2Fjqivxn91cecERaC4fYGjQ%3D%3D
+
+% 1mm^2 (no está en datasheet)
+area = 1e-6;            % [m] Area of the Photodiode.
+
+% Usando el LED CREE con lambda = 625, y a partir del gráfico de pg.3
+Ts = 0.6;                 % Gain of the Optical Filter.
+
+n = 1.5;                % Refractive Index of the Lens.
+
+% Half angle is 20°. Very not lambertian
+FOV = 20;               % [degree] Field of View of the Photodiode.
+responsivity = 0.62;    % [A/W] Responsivity of the photodiode.
+
+Cpd = 3.8e-12;          % [F] Photodiode capacitance.
+
+g = (n^2)/(sind(FOV).^2);           % Gain of the optical concentrator
+
 %% Circuit for the receiver (Gain 20K)
 q = 1.60217663e-19;             % [Coulomb] Electron charge.
 Kb = physconst("Boltzmann");    % [J/K] Boltzmann constant.
